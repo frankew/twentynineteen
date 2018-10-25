@@ -1,9 +1,10 @@
 <?php
 /**
- * Functions which enhance the theme by hooking into WordPress.
+ * Functions which enhance the theme by hooking into WordPress
  *
  * @package WordPress
  * @subpackage Twenty_Nineteen
+ * @since 1.0.0
  */
 
 /**
@@ -30,6 +31,17 @@ function twentynineteen_body_classes( $classes ) {
 	return $classes;
 }
 add_filter( 'body_class', 'twentynineteen_body_classes' );
+
+/**
+ * Adds custom class to the array of posts classes.
+ */
+function twentynineteen_post_classes( $classes, $class, $post_id ) {
+	$classes[] = 'entry';
+
+	return $classes;
+}
+add_filter( 'post_class', 'twentynineteen_post_classes', 10, 3 );
+
 
 /**
  * Add a pingback url auto-discovery header for single posts, pages, or attachments.
@@ -110,16 +122,7 @@ add_filter( 'get_the_archive_description', 'twentynineteen_get_the_archive_descr
  * Determines if post thumbnail can be displayed.
  */
 function twentynineteen_can_show_post_thumbnail() {
-	return ! post_password_required() && ! is_attachment() && has_post_thumbnail();
-}
-
-/**
- * Determines the estimated time to read a post, in minutes.
- */
-function twentynineteen_get_estimated_reading_time() {
-	$content = get_post_field( 'post_content', get_the_ID() );
-	$count   = str_word_count( strip_tags( $content ) );
-	return (int) round( $count / 250 ); // Assuming 250 words per minute reading speed.
+	return apply_filters( 'twentynineteen_can_show_post_thumbnail', ! post_password_required() && ! is_attachment() && has_post_thumbnail() );
 }
 
 /**
@@ -190,3 +193,46 @@ function twentynineteen_get_discussion_data() {
 	);
 	return $discussion;
 }
+
+/**
+ * WCAG 2.0 Attributes for Dropdown Menus
+ *
+ * Adjustments to menu attributes tot support WCAG 2.0 recommendations
+ * for flyout and dropdown menus.
+ *
+ * @ref https://www.w3.org/WAI/tutorials/menus/flyout/
+ */
+function twentynineteen_nav_menu_link_attributes( $atts, $item, $args, $depth ) {
+
+	// Add [aria-haspopup] and [aria-expanded] to menu items that have children
+	$item_has_children = in_array( 'menu-item-has-children', $item->classes );
+	if ( $item_has_children ) {
+		$atts['aria-haspopup'] = 'true';
+		$atts['aria-expanded'] = 'false';
+	}
+
+	return $atts;
+}
+add_filter( 'nav_menu_link_attributes', 'twentynineteen_nav_menu_link_attributes', 10, 4 );
+
+/**
+ * Add a dropdown icon to top-level menu items
+ */
+function twentynineteen_add_dropdown_icons( $output, $item, $depth, $args ) {
+
+	// Only add class to 'top level' items on the 'primary' menu.
+	if ( 'menu-1' == $args->theme_location && 0 === $depth ) {
+
+		if ( in_array( 'menu-item-has-children', $item->classes ) ) {
+			$output .= twentynineteen_get_icon_svg( 'arrow_drop_down_circle', 16 );
+		}
+	} else if ( 'menu-1' == $args->theme_location && $depth >= 1 ) {
+
+		if ( in_array( 'menu-item-has-children', $item->classes ) ) {
+			$output .= twentynineteen_get_icon_svg( 'keyboard_arrow_right', 24 );
+		}
+	}
+
+	return $output;
+}
+add_filter( 'walker_nav_menu_start_el', 'twentynineteen_add_dropdown_icons', 10, 4 );
